@@ -54,7 +54,6 @@ $(".list-group").on("click", "p", function(){
   .val(text);
   $(this).replaceWith(textInput);
   textInput.trigger("focus");
-  console.log(text);
 });
 
 //edit tasks on click/blur
