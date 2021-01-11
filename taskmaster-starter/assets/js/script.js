@@ -13,6 +13,9 @@ var createTask = function(taskText, taskDate, taskList) {
   // append span and p element to parent li
   taskLi.append(taskSpan, taskP);
 
+  //check due date
+  auditTask(taskLi);
+
 
   // append to ul list on the page
   $("#list-" + taskList).append(taskLi);
@@ -90,52 +93,46 @@ $(this).replaceWith(taskP);
 // due date was clicked
 $(".list-group").on("click", "span", function() {
   // get current text
-  var date = $(this)
-    .text()
-    .trim();
-
+  var date = $(this).text().trim();
   // create new input element
-  var dateInput = $("<input>")
-    .attr("type", "text")
-    .addClass("form-control")
-    .val(date);
-
+  var dateInput = $("<input>").attr("type", "text").addClass("form-control").val(date);
   // swap out elements
   $(this).replaceWith(dateInput);
 
+  //enable jquery ui datepicker
+  dateInput.datepicker({
+    minDate: 1,
+    onClose: function(){
+      //when calendar is closed, force a "change" event on the dateinput
+      $(this).trigger("change");
+    }
+  });
   // automatically focus on new element
   dateInput.trigger("focus");
 });
 
+
 // value of due date was changed
-$(".list-group").on("blur", "input[type='text']", function() {
+$(".list-group").on("change", "input[type='text']", function() {
   // get current text
-  var date = $(this)
-    .val()
-    .trim();
+  var date = $(this).val().trim();
 
   // get the parent ul's id attribute
-  var status = $(this)
-    .closest(".list-group")
-    .attr("id")
-    .replace("list-", "");
+  var status = $(this).closest(".list-group").attr("id").replace("list-", "");
 
   // get the task's position in the list of other li elements
-  var index = $(this)
-    .closest(".list-group-item")
-    .index();
+  var index = $(this).closest(".list-group-item").index();
 
   // update task in array and re-save to localstorage
   tasks[status][index].date = date;
   saveTasks();
 
   // recreate span element with bootstrap classes
-  var taskSpan = $("<span>")
-    .addClass("badge badge-primary badge-pill")
-    .text(date);
-
+  var taskSpan = $("<span>").addClass("badge badge-primary badge-pill").text(date);
   // replace input with span element
   $(this).replaceWith(taskSpan);
+  //pass task's<li> element into audit task to check new due date
+  auditTask($(taskSpan).closest(".list-group-item"));
 });
 
 $(".card .list-group").sortable({
@@ -161,15 +158,10 @@ $(".card .list-group").sortable({
     //loop over current set of children in sortable list
     $(this).children().each(function(){
       // trim down list's ID to match object property
-      var text = $(this)
-        .find("p")
-        .text()
-        .trim();
+      var text = $(this).find("p").text().trim();
       
       var date = $(this)
-        .find("span")
-        .text()
-        .trim();
+        .find("span").text().trim();
 
       //add task data t the temp array an an object
       tempArr.push({
@@ -178,9 +170,7 @@ $(".card .list-group").sortable({
        }); 
     });
     // trim down list's ID to match object property
-var arrName = $(this)
-.attr("id")
-.replace("list-", "");
+var arrName = $(this).attr("id").replace("list-", "");
 
 // update array on tasks object and save
 tasks[arrName] = tempArr;
@@ -202,7 +192,10 @@ $("#trash").droppable({
 });
 
 
-
+//Date picker
+$("#modalDueDate").datepicker({
+  minDate: 1
+});
 
 
 // modal was triggered
@@ -247,6 +240,23 @@ $("#remove-tasks").on("click", function() {
   }
   saveTasks();
 });
+
+var auditTask = function(taskEl) {
+  var date = $(taskEl).find("span").text().trim();
+  console.log(date);
+  //convert to moment object at 5pm
+  var time = moment(date, "L").set("hour", 17);
+  console.log(time);
+  //remove any old classes from element
+  $(taskEl).removeClass("list-group-item-warning list-group-item-danger");
+  //apply new class if task is near/overdue
+  if (moment().isAfter(time)){
+    $(taskEl).addClass("list-group-item-danger");
+  }
+  else if (Math.abs(moment().diff(time, "days")) <= 2){
+    $(taskEl).addClass("list-group-item-warning");
+  }
+}
 
 // load tasks for the first time
 loadTasks();
